@@ -7,6 +7,10 @@
 #include "sleepwarnDlg.h"
 #include "afxdialogex.h"
 
+#include <opencv\cv.h>
+#include <opencv\highgui.h>
+using namespace cv;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -64,6 +68,7 @@ BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON1, &CsleepwarnDlg::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
 
@@ -152,3 +157,12 @@ HCURSOR CsleepwarnDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+void CsleepwarnDlg::OnBnClickedButton1()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	Mat img = imread("C:\\Users\\Public\\Pictures\\Sample Pictures\\Desert.jpg");
+	imshow("test", img);
+	waitKey(0);
+}
