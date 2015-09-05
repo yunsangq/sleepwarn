@@ -62,13 +62,17 @@ CsleepwarnDlg::CsleepwarnDlg(CWnd* pParent /*=NULL*/)
 void CsleepwarnDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_CAM, m_ctrlPic);
 }
 
 BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_BUTTON1, &CsleepwarnDlg::OnBnClickedButton1)
+	ON_WM_QUERYDRAGICON()	
+	ON_BN_CLICKED(IDC_CAM_START, &CsleepwarnDlg::OnBnClickedCamStart)
+	ON_BN_CLICKED(IDC_CAM_STOP, &CsleepwarnDlg::OnBnClickedCamStop)
+	ON_WM_TIMER()
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -104,6 +108,9 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	m_capture = cvCreateCameraCapture(0);	
+	if (!m_capture)
+		AfxMessageBox(_T("카메라가 없습니다."));
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -126,28 +133,18 @@ void CsleepwarnDlg::OnSysCommand(UINT nID, LPARAM lParam)
 //  프레임워크에서 이 작업을 자동으로 수행합니다.
 
 void CsleepwarnDlg::OnPaint()
-{
-	if (IsIconic())
-	{
-		CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
+{	
+	CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
 
-		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+	CDC *pDC;
+	CRect rect;
+	pDC = m_ctrlPic.GetDC();
+	m_ctrlPic.GetClientRect(rect);
 
-		// 클라이언트 사각형에서 아이콘을 가운데에 맞춥니다.
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
-		CRect rect;
-		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
+	m_cImage.CopyOf(m_Image);
+	m_cImage.DrawToHDC(pDC->m_hDC, rect);
 
-		// 아이콘을 그립니다.
-		dc.DrawIcon(x, y, m_hIcon);
-	}
-	else
-	{
-		CDialogEx::OnPaint();
-	}
+	ReleaseDC(pDC);
 }
 
 // 사용자가 최소화된 창을 끄는 동안에 커서가 표시되도록 시스템에서
@@ -157,12 +154,37 @@ HCURSOR CsleepwarnDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-
-void CsleepwarnDlg::OnBnClickedButton1()
+void CsleepwarnDlg::OnBnClickedCamStart()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	Mat img = imread("C:\\Users\\Public\\Pictures\\Sample Pictures\\Desert.jpg");
-	imshow("test", img);
-	waitKey(0);
+	SetTimer(1, 30, NULL);
+}
+
+
+void CsleepwarnDlg::OnBnClickedCamStop()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	OnCancel();
+}
+
+
+void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	m_Image = cvQueryFrame(m_capture);
+	Invalidate(FALSE);
+
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+void CsleepwarnDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+
+	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	KillTimer(1);
+
+	if (m_capture)
+		cvReleaseCapture(&m_capture);
 }

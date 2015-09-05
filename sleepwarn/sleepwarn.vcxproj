@@ -191,6 +191,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CvvImage.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="sleepwarn.h" />
     <ClInclude Include="sleepwarnDlg.h" />
@@ -198,6 +199,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CvvImage.cpp" />
     <ClCompile Include="sleepwarn.cpp" />
     <ClCompile Include="sleepwarnDlg.cpp" />
     <ClCompile Include="stdafx.cpp">

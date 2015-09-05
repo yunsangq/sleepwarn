@@ -3,6 +3,11 @@
 //
 
 #pragma once
+#include "afxwin.h"
+
+#include "opencv\cv.h"
+#include "opencv\highgui.h"
+#include "CvvImage.h"
 
 
 // CsleepwarnDlg 대화 상자
@@ -27,10 +32,17 @@ protected:
 
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
-	afx_msg void OnPaint();
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);	
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
-public:
-	afx_msg void OnBnClickedButton1();
+public:	
+	afx_msg void OnBnClickedCamStart();
+	afx_msg void OnBnClickedCamStop();
+	afx_msg void OnPaint();
+	CStatic m_ctrlPic;
+	IplImage* m_Image;
+	CvvImage m_cImage;
+	CvCapture* m_capture;
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnDestroy();
 };
