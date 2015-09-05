@@ -7,13 +7,25 @@
 #include "sleepwarnDlg.h"
 #include "afxdialogex.h"
 
-#include <opencv\cv.h>
-#include <opencv\highgui.h>
+#include "opencv2\objdetect\objdetect.hpp"
+#include "opencv2\highgui\highgui.hpp"
+#include "opencv2\imgproc\imgproc.hpp"
+
+#include <iostream>
+#include <stdio.h>
+using namespace std;
 using namespace cv;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+Mat detect(Mat frame);
+String face_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_alt.xml";
+String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_eye_tree_eyeglasses.xml";
+
+CascadeClassifier face_cascade;
+CascadeClassifier eyes_cascade;
 
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
@@ -112,6 +124,9 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
 
+	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
+	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
+
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -171,7 +186,21 @@ void CsleepwarnDlg::OnBnClickedCamStop()
 void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	m_Image = cvQueryFrame(m_capture);
+	Mat frame;
+	IplImage* src;
+	IplImage* dst;
+
+	frame = cvQueryFrame(m_capture);
+	if (!frame.empty()) {
+		src = new IplImage(detect(frame));
+		cvFlip(src, dst, 1);
+		m_Image = dst;
+	}
+	else {
+		AfxMessageBox(_T("NO captured frame"));
+	}	
+
+	//m_Image = cvQueryFrame(m_capture);
 	Invalidate(FALSE);
 
 	CDialogEx::OnTimer(nIDEvent);
@@ -187,4 +216,30 @@ void CsleepwarnDlg::OnDestroy()
 
 	if (m_capture)
 		cvReleaseCapture(&m_capture);
+}
+
+Mat detect(Mat input_frame) {
+	vector<Rect> faces;	
+	Mat frame=input_frame;
+	Mat frame_gray;
+
+	cvtColor(frame, frame_gray, CV_BGR2GRAY);
+	equalizeHist(frame_gray, frame_gray);
+
+	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
+	for (size_t i = 0; i < faces.size(); i++) {
+		Point center(faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
+		ellipse(frame, center, Size(faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar(0, 255, 0), 4, 8, 0);
+
+		Mat faceROI = frame_gray(faces[i]);
+		vector<Rect> eyes;
+
+		eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
+		for (size_t j = 0; j < eyes.size(); j++) {
+			Point center(faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5);
+			int radius = cvRound(eyes[j].width + eyes[j].height*0.1);
+			circle(frame, center, radius, Scalar(0, 0, 255), 4, 8, 0);
+		}
+	}
+	return frame;
 }
