@@ -23,9 +23,12 @@ using namespace cv;
 Mat detect(Mat frame);
 String face_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_alt.xml";
 String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_eye_tree_eyeglasses.xml";
+//String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_righteye_2splits.xml";
+String close_cascade_name = "";
 
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
+CascadeClassifier close_cascade;
 
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
@@ -85,6 +88,8 @@ BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_CAM_STOP, &CsleepwarnDlg::OnBnClickedCamStop)
 	ON_WM_TIMER()
 	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_SOUND_STOP, &CsleepwarnDlg::OnBnClickedSoundStop)
+	ON_BN_CLICKED(IDC_SOUND_SELECT, &CsleepwarnDlg::OnBnClickedSoundSelect)
 END_MESSAGE_MAP()
 
 
@@ -120,12 +125,16 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	m_capture = cvCreateCameraCapture(0);	
+	/*
+	m_capture = cvCreateCameraCapture(0);
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
+	*/
+	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi");
 
 	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
 	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
+	//if (!close_cascade.load(close_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -200,7 +209,6 @@ void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 		AfxMessageBox(_T("NO captured frame"));
 	}	
 
-	//m_Image = cvQueryFrame(m_capture);
 	Invalidate(FALSE);
 
 	CDialogEx::OnTimer(nIDEvent);
@@ -225,7 +233,7 @@ Mat detect(Mat input_frame) {
 
 	cvtColor(frame, frame_gray, CV_BGR2GRAY);
 	equalizeHist(frame_gray, frame_gray);
-
+	
 	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 	for (size_t i = 0; i < faces.size(); i++) {
 		Point center(faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
@@ -237,9 +245,20 @@ Mat detect(Mat input_frame) {
 		eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 		for (size_t j = 0; j < eyes.size(); j++) {
 			Point center(faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5);
-			int radius = cvRound(eyes[j].width + eyes[j].height*0.1);
+			int radius = cvRound((eyes[j].width + eyes[j].height)*0.2);
 			circle(frame, center, radius, Scalar(0, 0, 255), 4, 8, 0);
-		}
+		}		
 	}
 	return frame;
+}
+
+void CsleepwarnDlg::OnBnClickedSoundStop()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+}
+
+
+void CsleepwarnDlg::OnBnClickedSoundSelect()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 }

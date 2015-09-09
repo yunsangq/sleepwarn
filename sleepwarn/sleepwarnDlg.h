@@ -45,4 +45,6 @@ public:
 	CvCapture* m_capture;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnDestroy();
+	afx_msg void OnBnClickedSoundStop();
+	afx_msg void OnBnClickedSoundSelect();
 };
