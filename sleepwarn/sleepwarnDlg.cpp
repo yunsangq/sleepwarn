@@ -23,13 +23,14 @@ using namespace cv;
 Mat detect(Mat frame);
 String face_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_alt.xml";
 String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_eye_tree_eyeglasses.xml";
-//String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_righteye_2splits.xml";
+//String eyes_cascade_name = "C:\\Users\\Administrator\\Desktop\\CascadeTrainer\\test_recognition\\cascade.xml";
 String close_cascade_name = "";
 
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 CascadeClassifier close_cascade;
 
+CString strPathName = NULL;
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -78,6 +79,7 @@ void CsleepwarnDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_CAM, m_ctrlPic);
+	DDX_Control(pDX, IDC_EDIT1, sound_name);
 }
 
 BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
@@ -90,6 +92,7 @@ BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_SOUND_STOP, &CsleepwarnDlg::OnBnClickedSoundStop)
 	ON_BN_CLICKED(IDC_SOUND_SELECT, &CsleepwarnDlg::OnBnClickedSoundSelect)
+	ON_BN_CLICKED(IDC_SOUND_PLAY, &CsleepwarnDlg::OnBnClickedSoundPlay)
 END_MESSAGE_MAP()
 
 
@@ -130,7 +133,7 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
 	*/
-	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi");
+	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi ");
 
 	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
 	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
@@ -196,18 +199,15 @@ void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	Mat frame;
-	IplImage* src;
-	IplImage* dst;
+	IplImage* src = NULL;
+	IplImage* dst = NULL;
 
 	frame = cvQueryFrame(m_capture);
-	if (!frame.empty()) {
-		src = new IplImage(detect(frame));
-		cvFlip(src, dst, 1);
-		m_Image = dst;
-	}
-	else {
-		AfxMessageBox(_T("NO captured frame"));
-	}	
+	
+	//src = new IplImage(detect(frame));	
+	//cvFlip(src, dst, 1);
+	//m_Image = dst;
+	m_Image = new IplImage(detect(frame));
 
 	Invalidate(FALSE);
 
@@ -243,11 +243,13 @@ Mat detect(Mat input_frame) {
 		vector<Rect> eyes;
 
 		eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-		for (size_t j = 0; j < eyes.size(); j++) {
-			Point center(faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5);
-			int radius = cvRound((eyes[j].width + eyes[j].height)*0.2);
-			circle(frame, center, radius, Scalar(0, 0, 255), 4, 8, 0);
-		}		
+		if (eyes.size() == 2){
+			for (size_t j = 0; j < eyes.size(); j++) {
+				Point center(faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5);
+				int radius = cvRound((eyes[j].width + eyes[j].height)*0.2);
+				circle(frame, center, radius, Scalar(0, 0, 255), 4, 8, 0);
+			}
+		}
 	}
 	return frame;
 }
@@ -255,10 +257,34 @@ Mat detect(Mat input_frame) {
 void CsleepwarnDlg::OnBnClickedSoundStop()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	//CString temp;
+	//temp.Format(_T("%d"), cnt);
+	//AfxMessageBox(temp);
+	PlaySound(NULL, AfxGetInstanceHandle(), NULL);
+
 }
 
 
 void CsleepwarnDlg::OnBnClickedSoundSelect()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	TCHAR szFilter[] = _T("Sound (*.wav)|*.wav|*.*|");
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, szFilter);
+	if (IDOK == dlg.DoModal())
+	{
+		strPathName = dlg.GetPathName();
+		sound_name.SetWindowTextW(strPathName);		
+	}
+}
+
+
+void CsleepwarnDlg::OnBnClickedSoundPlay()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (strPathName == ""){
+		AfxMessageBox(_T("알람 경로가 지정되지 않았습니다."));
+	}
+	else{
+		PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC);
+	}	
 }

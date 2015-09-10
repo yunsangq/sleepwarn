@@ -4,6 +4,7 @@
 
 #pragma once
 #include "afxwin.h"
+#include "afxcmn.h"
 
 #include "opencv\cv.h"
 #include "opencv\highgui.h"
@@ -47,4 +48,6 @@ public:
 	afx_msg void OnDestroy();
 	afx_msg void OnBnClickedSoundStop();
 	afx_msg void OnBnClickedSoundSelect();
+	CEdit sound_name;
+	afx_msg void OnBnClickedSoundPlay();
 };

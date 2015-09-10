@@ -33,6 +33,8 @@
 
 #include <afxcontrolbars.h>     // MFC의 리본 및 컨트롤 막대 지원
 
+#include <mmsystem.h>
+#pragma comment(lib, "winmm")
 
 
 
