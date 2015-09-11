@@ -49,5 +49,7 @@ public:
 	afx_msg void OnBnClickedSoundStop();
 	afx_msg void OnBnClickedSoundSelect();
 	CEdit sound_name;
-	afx_msg void OnBnClickedSoundPlay();
+	afx_msg void OnBnClickedSoundPlay();	
+	CEdit m_alarm;
+	CEdit m_normal;
 };

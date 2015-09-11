@@ -37,12 +37,13 @@ CascadeClassifier eyes_cascade;
 CascadeClassifier close_cascade;
 
 CString strPathName = NULL;
-int cnt = 0;
+int alarm_cnt = 0;
+int normal_cnt = 0;
 string face_window_name = "Capture - Face";
 string main_window_name = "Capture - Face detection";
-cv::RNG rng(12345);
-cv::Mat debugImage;
-cv::Mat skinCrCbHist = cv::Mat::zeros(cv::Size(256, 256), CV_8UC1);
+RNG rng(12345);
+Mat debugImage;
+Mat skinCrCbHist = Mat::zeros(Size(256, 256), CV_8UC1);
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -91,6 +92,8 @@ void CsleepwarnDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_CAM, m_ctrlPic);
 	DDX_Control(pDX, IDC_EDIT1, sound_name);
+	DDX_Control(pDX, IDC_ALARM_CNT, m_alarm);
+	DDX_Control(pDX, IDC_NORMAL_CNT, m_normal);
 }
 
 BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
@@ -144,15 +147,15 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
 	*/
-	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi");
+	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.mp4");
 
 	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
 	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
-	//if (!close_cascade.load(close_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
-	cv::namedWindow(face_window_name, CV_WINDOW_NORMAL);
-	cv::moveWindow(face_window_name, 10, 100);
-	cv::namedWindow(main_window_name, CV_WINDOW_NORMAL);
-	cv::moveWindow(main_window_name, 400, 100);
+	
+	namedWindow(face_window_name, CV_WINDOW_NORMAL);
+	moveWindow(face_window_name, 10, 100);
+	namedWindow(main_window_name, CV_WINDOW_NORMAL);
+	moveWindow(main_window_name, 400, 100);
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -198,7 +201,12 @@ HCURSOR CsleepwarnDlg::OnQueryDragIcon()
 void CsleepwarnDlg::OnBnClickedCamStart()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	SetTimer(1, 30, NULL);
+	if (strPathName == ""){
+		AfxMessageBox(_T("알람 경로가 지정되지 않았습니다."));
+	}
+	else{
+		SetTimer(1, 30, NULL);
+	}	
 }
 
 
@@ -215,13 +223,19 @@ void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 	Mat frame;	
 
 	frame = cvQueryFrame(m_capture);
-	cv::flip(frame, frame, 1);
+	flip(frame, frame, 1);
 	frame.copyTo(debugImage);
 	
 	m_Image = new IplImage(detect(frame));
 
 	imshow(main_window_name, debugImage);
 
+	CString str;
+	str.Format(L"%d", alarm_cnt);
+	m_alarm.SetWindowTextW(str);
+	CString str1;
+	str1.Format(L"%d", normal_cnt);
+	m_normal.SetWindowTextW(str1);
 	Invalidate(FALSE);
 
 	CDialogEx::OnTimer(nIDEvent);
@@ -240,21 +254,19 @@ void CsleepwarnDlg::OnDestroy()
 }
 
 
-cv::Mat findSkin(cv::Mat &frame) {
-	cv::Mat input;
-	cv::Mat output = cv::Mat(frame.rows, frame.cols, CV_8U);
+Mat findSkin(Mat &frame) {
+	Mat input;
+	Mat output = Mat(frame.rows, frame.cols, CV_8U);
 
 	cvtColor(frame, input, CV_BGR2YCrCb);
 
 	for (int y = 0; y < input.rows; ++y) {
-		const cv::Vec3b *Mr = input.ptr<cv::Vec3b>(y);
-		//    uchar *Or = output.ptr<uchar>(y);
-		cv::Vec3b *Or = frame.ptr<cv::Vec3b>(y);
+		const Vec3b *Mr = input.ptr<Vec3b>(y);
+		Vec3b *Or = frame.ptr<Vec3b>(y);
 		for (int x = 0; x < input.cols; ++x) {
-			cv::Vec3b ycrcb = Mr[x];
-			//      Or[x] = (skinCrCbHist.at<uchar>(ycrcb[1], ycrcb[2]) > 0) ? 255 : 0;
+			Vec3b ycrcb = Mr[x];
 			if (skinCrCbHist.at<uchar>(ycrcb[1], ycrcb[2]) == 0) {
-				Or[x] = cv::Vec3b(0, 0, 0);
+				Or[x] = Vec3b(0, 0, 0);
 			}
 		}
 	}
@@ -262,41 +274,39 @@ cv::Mat findSkin(cv::Mat &frame) {
 }
 
 
-void findEyes(cv::Mat frame_gray, cv::Rect face) {
-	cv::Mat faceROI = frame_gray(face);
-	cv::Mat debugFace = faceROI;
+void findEyes(Mat frame_gray, Rect face) {
+	Mat faceROI = frame_gray(face);
+	Mat debugFace = faceROI;
 
 	if (kSmoothFaceImage) {
 		double sigma = kSmoothFaceFactor * face.width;
-		GaussianBlur(faceROI, faceROI, cv::Size(0, 0), sigma);
+		GaussianBlur(faceROI, faceROI, Size(0, 0), sigma);
 	}
-	//-- Find eye regions and draw them
+
 	int eye_region_width = face.width * (kEyePercentWidth / 100.0);
 	int eye_region_height = face.width * (kEyePercentHeight / 100.0);
 	int eye_region_top = face.height * (kEyePercentTop / 100.0);
-	cv::Rect leftEyeRegion(face.width*(kEyePercentSide / 100.0),
-		eye_region_top, eye_region_width, eye_region_height);
-	cv::Rect rightEyeRegion(face.width - eye_region_width - face.width*(kEyePercentSide / 100.0),
-		eye_region_top, eye_region_width, eye_region_height);
+	Rect leftEyeRegion(face.width*(kEyePercentSide / 100.0), eye_region_top, eye_region_width, eye_region_height);
+	Rect rightEyeRegion(face.width - eye_region_width - face.width*(kEyePercentSide / 100.0), eye_region_top, eye_region_width, eye_region_height);
 
-	//-- Find Eye Centers
-	cv::Point leftPupil = findEyeCenter(faceROI, leftEyeRegion, "Left Eye");
-	cv::Point rightPupil = findEyeCenter(faceROI, rightEyeRegion, "Right Eye");
-	// get corner regions
-	cv::Rect leftRightCornerRegion(leftEyeRegion);
+
+	Point leftPupil = findEyeCenter(faceROI, leftEyeRegion, "Left Eye");
+	Point rightPupil = findEyeCenter(faceROI, rightEyeRegion, "Right Eye");
+
+	Rect leftRightCornerRegion(leftEyeRegion);
 	leftRightCornerRegion.width -= leftPupil.x;
 	leftRightCornerRegion.x += leftPupil.x;
 	leftRightCornerRegion.height /= 2;
 	leftRightCornerRegion.y += leftRightCornerRegion.height / 2;
-	cv::Rect leftLeftCornerRegion(leftEyeRegion);
+	Rect leftLeftCornerRegion(leftEyeRegion);
 	leftLeftCornerRegion.width = leftPupil.x;
 	leftLeftCornerRegion.height /= 2;
 	leftLeftCornerRegion.y += leftLeftCornerRegion.height / 2;
-	cv::Rect rightLeftCornerRegion(rightEyeRegion);
+	Rect rightLeftCornerRegion(rightEyeRegion);
 	rightLeftCornerRegion.width = rightPupil.x;
 	rightLeftCornerRegion.height /= 2;
 	rightLeftCornerRegion.y += rightLeftCornerRegion.height / 2;
-	cv::Rect rightRightCornerRegion(rightEyeRegion);
+	Rect rightRightCornerRegion(rightEyeRegion);
 	rightRightCornerRegion.width -= rightPupil.x;
 	rightRightCornerRegion.x += rightPupil.x;
 	rightRightCornerRegion.height /= 2;
@@ -314,21 +324,28 @@ void findEyes(cv::Mat frame_gray, cv::Rect face) {
 	circle(debugFace, rightPupil, 3, 1234);
 	circle(debugFace, leftPupil, 3, 1234);
 
-	//if (rightPupil.y > rightEyeRegion.y){ cnt++; }
-	//if (cnt>10){ PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC); }
+	if (leftPupil.y > leftEyeRegion.y && leftPupil.y < leftEyeRegion.y + 5 || rightPupil.y > rightEyeRegion.y && rightPupil.y < rightEyeRegion.y +5 ){
+		alarm_cnt++;
+	}
+	else{
+		normal_cnt++;
+	}
+	if (normal_cnt > 100){
+		normal_cnt = 0;
+		alarm_cnt = 0;
+	}
 	
-	//-- Find Eye Corners
 	if (kEnableEyeCorner) {		
-		cv::Point2f leftRightCorner = findEyeCorner(faceROI(leftRightCornerRegion), true, false);
+		Point2f leftRightCorner = findEyeCorner(faceROI(leftRightCornerRegion), true, false);
 		leftRightCorner.x += leftRightCornerRegion.x;
 		leftRightCorner.y += leftRightCornerRegion.y;
-		cv::Point2f leftLeftCorner = findEyeCorner(faceROI(leftLeftCornerRegion), true, true);
+		Point2f leftLeftCorner = findEyeCorner(faceROI(leftLeftCornerRegion), true, true);
 		leftLeftCorner.x += leftLeftCornerRegion.x;
 		leftLeftCorner.y += leftLeftCornerRegion.y;
-		cv::Point2f rightLeftCorner = findEyeCorner(faceROI(rightLeftCornerRegion), false, true);
+		Point2f rightLeftCorner = findEyeCorner(faceROI(rightLeftCornerRegion), false, true);
 		rightLeftCorner.x += rightLeftCornerRegion.x;
 		rightLeftCorner.y += rightLeftCornerRegion.y;
-		cv::Point2f rightRightCorner = findEyeCorner(faceROI(rightRightCornerRegion), false, false);
+		Point2f rightRightCorner = findEyeCorner(faceROI(rightRightCornerRegion), false, false);
 		rightRightCorner.x += rightRightCornerRegion.x;
 		rightRightCorner.y += rightRightCornerRegion.y;
 		circle(faceROI, leftRightCorner, 3, 200);
@@ -338,39 +355,33 @@ void findEyes(cv::Mat frame_gray, cv::Rect face) {
 	}
 
 	imshow(face_window_name, faceROI);
-	//return faceROI;	
-	//  cv::Rect roi( cv::Point( 0, 0 ), faceROI.size());
-	//  cv::Mat destinationROI = debugImage( roi );
-	//  faceROI.copyTo( destinationROI );
 }
 
 Mat detect(Mat input_frame) {
 	vector<Rect> faces;	
 	Mat frame=input_frame;
-	//Mat frame_gray;
 
-	std::vector<cv::Mat> rgbChannels(3);
-	cv::split(frame, rgbChannels);
-	cv::Mat frame_gray = rgbChannels[2];
-	/*
-	//cvtColor(frame, frame_gray, CV_BGR2GRAY);
-	//equalizeHist(frame_gray, frame_gray);
-	
-	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-	for (size_t i = 0; i < faces.size(); i++) {
-		Point center(faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
-		ellipse(frame, center, Size(faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar(0, 255, 0), 4, 8, 0);
+	std::vector<Mat> rgbChannels(3);
+	split(frame, rgbChannels);
+	Mat frame_gray = rgbChannels[2];
+
+	if (alarm_cnt > 100){
+		alarm_cnt = 0;
+		PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC);
 	}
-	*/
-	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT, cv::Size(150, 150));
+
+	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT, Size(150, 150));	
 	for (int i = 0; i < faces.size(); i++)
 	{
 		rectangle(debugImage, faces[i], 1234);
 	}
-	//-- Show what you got
 
 	if (faces.size() > 0) {
 		findEyes(frame_gray, faces[0]);
+	}
+	else if (faces.size() == 0){
+		normal_cnt = 0;
+		alarm_cnt++;
 	}
 	return frame;
 }
@@ -378,11 +389,8 @@ Mat detect(Mat input_frame) {
 void CsleepwarnDlg::OnBnClickedSoundStop()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	//CString temp;
-	//temp.Format(_T("%d"), cnt);
-	//AfxMessageBox(temp);
 	PlaySound(NULL, AfxGetInstanceHandle(), NULL);
-
+	alarm_cnt = 0;
 }
 
 
