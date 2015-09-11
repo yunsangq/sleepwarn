@@ -44,6 +44,11 @@ public:
 	IplImage* m_Image;
 	CvvImage m_cImage;
 	CvCapture* m_capture;
+
+	CStatic m_eyesPic;
+	IplImage* m_EyesImage;
+	CvvImage m_cEyesImage;
+
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnDestroy();
 	afx_msg void OnBnClickedSoundStop();
@@ -51,5 +56,5 @@ public:
 	CEdit sound_name;
 	afx_msg void OnBnClickedSoundPlay();	
 	CEdit m_alarm;
-	CEdit m_normal;
+	CEdit m_normal;	
 };

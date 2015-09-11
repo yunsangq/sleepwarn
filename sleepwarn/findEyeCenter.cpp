@@ -105,7 +105,7 @@ cv::Point findEyeCenter(cv::Mat face, cv::Rect eye, std::string debugWindow) {
 			}
 		}
 	}
-	imshow(debugWindow, gradientX);
+	//imshow(debugWindow, gradientX);
 
 	cv::Mat weight;
 	GaussianBlur(eyeROI, weight, cv::Size(kWeightBlurSize, kWeightBlurSize), 0, 0);

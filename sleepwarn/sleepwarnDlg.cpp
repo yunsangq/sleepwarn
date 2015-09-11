@@ -26,23 +26,18 @@ using namespace cv;
 #define new DEBUG_NEW
 #endif
 
-Mat detect(Mat frame);
+void detect(Mat frame);
 String face_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_alt.xml";
-String eyes_cascade_name = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_eye_tree_eyeglasses.xml";
-//String eyes_cascade_name = "C:\\Users\\Administrator\\Desktop\\CascadeTrainer\\test_recognition\\cascade.xml";
-String close_cascade_name = "";
 
 CascadeClassifier face_cascade;
-CascadeClassifier eyes_cascade;
-CascadeClassifier close_cascade;
 
 CString strPathName = NULL;
 int alarm_cnt = 0;
 int normal_cnt = 0;
-string face_window_name = "Capture - Face";
-string main_window_name = "Capture - Face detection";
+
 RNG rng(12345);
 Mat debugImage;
+Mat eyeImage;
 Mat skinCrCbHist = Mat::zeros(Size(256, 256), CV_8UC1);
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -94,6 +89,7 @@ void CsleepwarnDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT1, sound_name);
 	DDX_Control(pDX, IDC_ALARM_CNT, m_alarm);
 	DDX_Control(pDX, IDC_NORMAL_CNT, m_normal);
+	DDX_Control(pDX, IDC_EYES, m_eyesPic);
 }
 
 BEGIN_MESSAGE_MAP(CsleepwarnDlg, CDialogEx)
@@ -142,20 +138,11 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	/*
+	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
 	m_capture = cvCreateCameraCapture(0);
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
-	*/
-	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.mp4");
 
-	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
-	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
-	
-	namedWindow(face_window_name, CV_WINDOW_NORMAL);
-	moveWindow(face_window_name, 10, 100);
-	namedWindow(main_window_name, CV_WINDOW_NORMAL);
-	moveWindow(main_window_name, 400, 100);
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -189,6 +176,14 @@ void CsleepwarnDlg::OnPaint()
 	m_cImage.DrawToHDC(pDC->m_hDC, rect);
 
 	ReleaseDC(pDC);
+
+	CRect rt;
+	CDC *pStaticDC = m_eyesPic.GetDC();
+	m_eyesPic.GetClientRect(rt);
+	m_cEyesImage.CopyOf(m_EyesImage);
+	m_cEyesImage.DrawToHDC(pStaticDC->m_hDC, rt);
+
+	ReleaseDC(pStaticDC);
 }
 
 // 사용자가 최소화된 창을 끄는 동안에 커서가 표시되도록 시스템에서
@@ -225,10 +220,10 @@ void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 	frame = cvQueryFrame(m_capture);
 	flip(frame, frame, 1);
 	frame.copyTo(debugImage);
-	
-	m_Image = new IplImage(detect(frame));
+	detect(frame);
 
-	imshow(main_window_name, debugImage);
+	m_Image = new IplImage(debugImage);	
+	m_EyesImage = new IplImage(eyeImage);
 
 	CString str;
 	str.Format(L"%d", alarm_cnt);
@@ -236,6 +231,7 @@ void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 	CString str1;
 	str1.Format(L"%d", normal_cnt);
 	m_normal.SetWindowTextW(str1);
+
 	Invalidate(FALSE);
 
 	CDialogEx::OnTimer(nIDEvent);
@@ -249,8 +245,9 @@ void CsleepwarnDlg::OnDestroy()
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 	KillTimer(1);
 
-	if (m_capture)
-		cvReleaseCapture(&m_capture);
+	if (m_capture) {
+		cvReleaseCapture(&m_capture);		
+	}
 }
 
 
@@ -315,16 +312,16 @@ void findEyes(Mat frame_gray, Rect face) {
 	rectangle(debugFace, leftLeftCornerRegion, 200);
 	rectangle(debugFace, rightLeftCornerRegion, 200);
 	rectangle(debugFace, rightRightCornerRegion, 200);
-	// change eye centers to face coordinates
+
 	rightPupil.x += rightEyeRegion.x;
 	rightPupil.y += rightEyeRegion.y;
 	leftPupil.x += leftEyeRegion.x;
 	leftPupil.y += leftEyeRegion.y;
-	// draw eye centers
+
 	circle(debugFace, rightPupil, 3, 1234);
 	circle(debugFace, leftPupil, 3, 1234);
 
-	if (leftPupil.y > leftEyeRegion.y && leftPupil.y < leftEyeRegion.y + 5 || rightPupil.y > rightEyeRegion.y && rightPupil.y < rightEyeRegion.y +5 ){
+	if ( (leftPupil.y > leftEyeRegion.y && leftPupil.y < leftEyeRegion.y + 5) || (rightPupil.y > rightEyeRegion.y && rightPupil.y < rightEyeRegion.y +5) ){
 		alarm_cnt++;
 	}
 	else{
@@ -354,10 +351,11 @@ void findEyes(Mat frame_gray, Rect face) {
 		circle(faceROI, rightRightCorner, 3, 200);
 	}
 
-	imshow(face_window_name, faceROI);
+	//imshow(face_window_name, faceROI);	
+	eyeImage = faceROI;
 }
 
-Mat detect(Mat input_frame) {
+void detect(Mat input_frame) {
 	vector<Rect> faces;	
 	Mat frame=input_frame;
 
@@ -365,7 +363,7 @@ Mat detect(Mat input_frame) {
 	split(frame, rgbChannels);
 	Mat frame_gray = rgbChannels[2];
 
-	if (alarm_cnt > 100){
+	if (alarm_cnt > 50){
 		alarm_cnt = 0;
 		PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC);
 	}
@@ -377,13 +375,12 @@ Mat detect(Mat input_frame) {
 	}
 
 	if (faces.size() > 0) {
-		findEyes(frame_gray, faces[0]);
+		findEyes(frame_gray, faces[0]);		
 	}
 	else if (faces.size() == 0){
 		normal_cnt = 0;
 		alarm_cnt++;
 	}
-	return frame;
 }
 
 void CsleepwarnDlg::OnBnClickedSoundStop()
