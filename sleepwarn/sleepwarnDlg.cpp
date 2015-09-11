@@ -37,6 +37,9 @@ CascadeClassifier eyes_cascade;
 CascadeClassifier close_cascade;
 
 CString strPathName = NULL;
+int cnt = 0;
+string face_window_name = "Capture - Face";
+string main_window_name = "Capture - Face detection";
 cv::RNG rng(12345);
 cv::Mat debugImage;
 cv::Mat skinCrCbHist = cv::Mat::zeros(cv::Size(256, 256), CV_8UC1);
@@ -136,17 +139,20 @@ BOOL CsleepwarnDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	
+	/*
 	m_capture = cvCreateCameraCapture(0);
 	if (!m_capture)
 		AfxMessageBox(_T("카메라가 없습니다."));
-	
-	//m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi ");
+	*/
+	m_capture = cvCreateFileCapture("C:\\Users\\Administrator\\Documents\\test.avi");
 
 	if (!face_cascade.load(face_cascade_name)) AfxMessageBox(_T("Error loading face"));
 	if (!eyes_cascade.load(eyes_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
 	//if (!close_cascade.load(close_cascade_name)) AfxMessageBox(_T("Error loading eyes"));
-
+	cv::namedWindow(face_window_name, CV_WINDOW_NORMAL);
+	cv::moveWindow(face_window_name, 10, 100);
+	cv::namedWindow(main_window_name, CV_WINDOW_NORMAL);
+	cv::moveWindow(main_window_name, 400, 100);
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -206,16 +212,15 @@ void CsleepwarnDlg::OnBnClickedCamStop()
 void CsleepwarnDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	Mat frame;
-	IplImage* src = NULL;
-	IplImage* dst = NULL;
+	Mat frame;	
 
 	frame = cvQueryFrame(m_capture);
+	cv::flip(frame, frame, 1);
+	frame.copyTo(debugImage);
 	
-	//src = new IplImage(detect(frame));	
-	//cvFlip(src, dst, 1);
-	//m_Image = dst;
 	m_Image = new IplImage(detect(frame));
+
+	imshow(main_window_name, debugImage);
 
 	Invalidate(FALSE);
 
@@ -257,7 +262,7 @@ cv::Mat findSkin(cv::Mat &frame) {
 }
 
 
-Mat findEyes(cv::Mat frame_gray, cv::Rect face) {
+void findEyes(cv::Mat frame_gray, cv::Rect face) {
 	cv::Mat faceROI = frame_gray(face);
 	cv::Mat debugFace = faceROI;
 
@@ -309,8 +314,11 @@ Mat findEyes(cv::Mat frame_gray, cv::Rect face) {
 	circle(debugFace, rightPupil, 3, 1234);
 	circle(debugFace, leftPupil, 3, 1234);
 
+	//if (rightPupil.y > rightEyeRegion.y){ cnt++; }
+	//if (cnt>10){ PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC); }
+	
 	//-- Find Eye Corners
-	if (kEnableEyeCorner) {
+	if (kEnableEyeCorner) {		
 		cv::Point2f leftRightCorner = findEyeCorner(faceROI(leftRightCornerRegion), true, false);
 		leftRightCorner.x += leftRightCornerRegion.x;
 		leftRightCorner.y += leftRightCornerRegion.y;
@@ -329,8 +337,8 @@ Mat findEyes(cv::Mat frame_gray, cv::Rect face) {
 		circle(faceROI, rightRightCorner, 3, 200);
 	}
 
-	return faceROI;
-	//imshow(face_window_name, faceROI);
+	imshow(face_window_name, faceROI);
+	//return faceROI;	
 	//  cv::Rect roi( cv::Point( 0, 0 ), faceROI.size());
 	//  cv::Mat destinationROI = debugImage( roi );
 	//  faceROI.copyTo( destinationROI );
@@ -339,32 +347,30 @@ Mat findEyes(cv::Mat frame_gray, cv::Rect face) {
 Mat detect(Mat input_frame) {
 	vector<Rect> faces;	
 	Mat frame=input_frame;
-	Mat frame_gray;
+	//Mat frame_gray;
 
-	cvtColor(frame, frame_gray, CV_BGR2GRAY);
-	equalizeHist(frame_gray, frame_gray);
+	std::vector<cv::Mat> rgbChannels(3);
+	cv::split(frame, rgbChannels);
+	cv::Mat frame_gray = rgbChannels[2];
+	/*
+	//cvtColor(frame, frame_gray, CV_BGR2GRAY);
+	//equalizeHist(frame_gray, frame_gray);
 	
 	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 	for (size_t i = 0; i < faces.size(); i++) {
 		Point center(faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
 		ellipse(frame, center, Size(faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar(0, 255, 0), 4, 8, 0);
-		/*
-		Mat faceROI = frame_gray(faces[i]);
-		vector<Rect> eyes;
-		
-		eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-		if (eyes.size() == 2){
-			for (size_t j = 0; j < eyes.size(); j++) {
-				Point center(faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5);
-				int radius = cvRound((eyes[j].width + eyes[j].height)*0.2);
-				circle(frame, center, radius, Scalar(0, 0, 255), 4, 8, 0);
-			}
-		}
-		*/
+	}
+	*/
+	face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT, cv::Size(150, 150));
+	for (int i = 0; i < faces.size(); i++)
+	{
+		rectangle(debugImage, faces[i], 1234);
 	}
 	//-- Show what you got
+
 	if (faces.size() > 0) {
-		frame = findEyes(frame_gray, faces[0]);
+		findEyes(frame_gray, faces[0]);
 	}
 	return frame;
 }
