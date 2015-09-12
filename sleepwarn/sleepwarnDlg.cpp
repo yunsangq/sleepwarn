@@ -321,13 +321,13 @@ void findEyes(Mat frame_gray, Rect face) {
 	circle(debugFace, rightPupil, 3, 1234);
 	circle(debugFace, leftPupil, 3, 1234);
 
-	if ( (leftPupil.y > leftEyeRegion.y && leftPupil.y < leftEyeRegion.y + 5) || (rightPupil.y > rightEyeRegion.y && rightPupil.y < rightEyeRegion.y +5) ){
+	if ( (leftPupil.y > leftEyeRegion.y && leftPupil.y < leftEyeRegion.y + 10) || (rightPupil.y > rightEyeRegion.y && rightPupil.y < rightEyeRegion.y + 10) ){
 		alarm_cnt++;
 	}
 	else{
 		normal_cnt++;
 	}
-	if (normal_cnt > 100){
+	if (normal_cnt > 200){
 		normal_cnt = 0;
 		alarm_cnt = 0;
 	}
@@ -363,7 +363,7 @@ void detect(Mat input_frame) {
 	split(frame, rgbChannels);
 	Mat frame_gray = rgbChannels[2];
 
-	if (alarm_cnt > 50){
+	if (alarm_cnt > 25){
 		alarm_cnt = 0;
 		PlaySound(strPathName, AfxGetInstanceHandle(), SND_ASYNC);
 	}
