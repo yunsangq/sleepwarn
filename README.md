@@ -3,4 +3,4 @@
 opencv 
 MFC program
 
-eye detect sleep warning program
+eyes detect sleep warning program
